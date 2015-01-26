@@ -1,5 +1,5 @@
 /*!
- * Materialize v0.95.0 (http://materializecss.com)
+ * Materialize vundefined (http://materializecss.com)
  * Copyright 2014-2015 Materialize
  * MIT License (https://raw.githubusercontent.com/Dogfalo/materialize/master/LICENSE)
  */
@@ -246,7 +246,7 @@ jQuery.extend( jQuery.easing,
 ;(function ($) {
   $.fn.collapsible = function(options) {
     var defaults = {
-        accordion: true
+        accordion: undefined
     };
 
     options = $.extend(defaults, options);
@@ -258,8 +258,20 @@ jQuery.extend( jQuery.easing,
 
       var $panel_headers = $(this).find('.collapsible-header');
 
+      var collapsible_type = $this.data("collapsible");
+
+      // Turn off any existing event handlers
+       $this.off();
+       $this.children().off();
+
+
+       /****************
+       Helper Functions
+       ****************/
+
       // Accordion Open
       function accordionOpen(object) {
+        $panel_headers = $this.find('.collapsible-header');
         object.parent().toggleClass('active');
         if (object.parent().hasClass('active')){
           object.siblings('.collapsible-body').stop(true,false).slideDown({ duration: 350, easing: "easeOutQuart", queue: false});
@@ -270,7 +282,6 @@ jQuery.extend( jQuery.easing,
         $panel_headers.not(object).parent().removeClass('active');
         $panel_headers.not(object).parent().children('.collapsible-body').stop(true,false).slideUp({ duration: 350, easing: "easeOutQuart", queue: false});
       }
-
       // Collapsible Open
       function collapsibleOpen(object) {
         object.parent().toggleClass('active');
@@ -282,33 +293,42 @@ jQuery.extend( jQuery.easing,
         }
       }
 
-      if (defaults.accordion) {
+      /*****  End Helper Functions  *****/
 
-        $panel_headers.each(function () {
-          $(this).click(function () {
-            accordionOpen($(this));
-          });
+
+
+      if (options.accordion || collapsible_type == "accordion" || collapsible_type == undefined) { // Handle Accordion
+
+        // Event delegation to open collapsible section
+        $this.on('click', '.collapsible-header', function (e) {
+          accordionOpen($(e.currentTarget));
         });
 
         // Open first active
         accordionOpen($panel_headers.filter('.active').first());
       }
-      else {
+      else { // Handle Expandables
         $panel_headers.each(function () {
+
+          // Event delegation to open collapsible section
+          $this.on('click', '.collapsible-header', function (e) {
+            collapsibleOpen($(e.currentTarget));
+          });
 
           // Open any bodies that have the active class
           if ($(this).hasClass('active')) {
             collapsibleOpen($(this));
           }
 
-          $(this).click(function () {
-            collapsibleOpen($(this));
-          });
         });
       }
 
     });
   };
+
+  $(document).ready(function(){
+    $('.collapsible').collapsible();
+  });
 }( jQuery ));;(function ($) {
 
   $.fn.dropdown = function (options) {
@@ -386,8 +406,6 @@ jQuery.extend( jQuery.easing,
     }
 
 
-
-
     // Hover
     if (options.hover) {
       // Hover handler to show dropdown
@@ -420,7 +438,7 @@ jQuery.extend( jQuery.easing,
       // Click handler to show dropdown
       origin.click( function(e){ // Click
         e.preventDefault(); // Prevents button click from moving window
-        e.stopPropagation();
+        e.stopPropagation(); // Allows clicking on icon
         placeDropdown();
         $(document).bind('click.'+ activates.attr('id'), function (e) {
           if (!activates.is(e.target) && (!origin.is(e.target))) {
@@ -528,6 +546,7 @@ jQuery.extend( jQuery.easing,
         if (typeof(options.complete) === "function") {
           options.complete();
         }
+        $('#lean-overlay').remove();
       });
     }
   })
@@ -550,6 +569,12 @@ jQuery.extend( jQuery.easing,
   $.fn.materialbox = function () {
 
     return this.each(function() {
+
+      if ($(this).hasClass('intialized')) {
+        return;
+      }
+
+      $(this).addClass('intialized');
 
       var overlayActive = false;
       var doneAnimating = true;
@@ -770,6 +795,11 @@ jQuery.extend( jQuery.easing,
         }
         });
 };
+
+$(document).ready(function(){
+  $('.materialboxed').materialbox();
+});
+
 }( jQuery ));;(function ($) {
 
     $.fn.parallax = function () {
@@ -816,124 +846,141 @@ jQuery.extend( jQuery.easing,
     };
 }( jQuery ));;(function ($) {
 
-  $.fn.tabs = function () {
+  var methods = {
+    init : function() {
+      return this.each(function() {
 
-    return this.each(function() {
+      // For each set of tabs, we want to keep track of
+      // which tab is active and its associated content
+      var $this = $(this),
+          window_width = $(window).width();
 
-    // For each set of tabs, we want to keep track of
-    // which tab is active and its associated content
-    var $this = $(this),
-        window_width = $(window).width();
+      $this.width('100%');
+      // Set Tab Width for each tab
+      var $num_tabs = $(this).children('li').length;
+      $this.children('li').each(function() {
+        $(this).width((100/$num_tabs)+'%');
+      });
+      var $active, $content, $links = $this.find('li.tab a'),
+          $tabs_width = $this.width(),
+          $tab_width = $this.find('li').first().outerWidth(),
+          $index = 0;
 
-    $this.width('100%');
-    // Set Tab Width for each tab
-    var $num_tabs = $(this).children('li').length;
-    $this.children('li').each(function() {
-      $(this).width((100/$num_tabs)+'%');
-    });
-    var $active, $content, $links = $this.find('li.tab a'),
-        $tabs_width = $this.width(),
-        $tab_width = $this.find('li').first().outerWidth(),
-        $index = 0;
+      // If the location.hash matches one of the links, use that as the active tab.
+      // console.log($(".tabs .tab a[href='#tab3']"));
+      $active = $($links.filter('[href="'+location.hash+'"]'));
 
-    // If the location.hash matches one of the links, use that as the active tab.
-    // console.log($(".tabs .tab a[href='#tab3']"));
-    $active = $($links.filter('[href="'+location.hash+'"]'));
+      // If no match is found, use the first link or any with class 'active' as the initial active tab.
+      if ($active.length === 0) {
+          $active = $(this).find('li.tab a.active').first();
+      }
+      if ($active.length === 0) {
+        $active = $(this).find('li.tab a').first();
+      }
 
-    // If no match is found, use the first link or any with class 'active' as the initial active tab.
-    if ($active.length === 0) {
-        $active = $(this).find('li.tab a.active').first();
-    }
-    if ($active.length === 0) {
-      $active = $(this).find('li.tab a').first();
-    }
-
-    $active.addClass('active');
-    $index = $links.index($active);
-    if ($index < 0) {
-      $index = 0;
-    }
-
-    $content = $($active[0].hash);
-
-    // append indicator then set indicator width to tab width
-    $this.append('<div class="indicator"></div>');
-    var $indicator = $this.find('.indicator');
-    if ($this.is(":visible")) {
-      $indicator.css({"right": $tabs_width - (($index + 1) * $tab_width)});
-      $indicator.css({"left": $index * $tab_width});
-    }
-    $(window).resize(function () {
-      $tabs_width = $this.width();
-      $tab_width = $this.find('li').first().outerWidth();
+      $active.addClass('active');
+      $index = $links.index($active);
       if ($index < 0) {
         $index = 0;
       }
-      if ($tab_width !== 0 && $tabs_width !== 0) {
+
+      $content = $($active[0].hash);
+
+      // append indicator then set indicator width to tab width
+      $this.append('<div class="indicator"></div>');
+      var $indicator = $this.find('.indicator');
+      if ($this.is(":visible")) {
         $indicator.css({"right": $tabs_width - (($index + 1) * $tab_width)});
         $indicator.css({"left": $index * $tab_width});
       }
+      $(window).resize(function () {
+        $tabs_width = $this.width();
+        $tab_width = $this.find('li').first().outerWidth();
+        if ($index < 0) {
+          $index = 0;
+        }
+        if ($tab_width !== 0 && $tabs_width !== 0) {
+          $indicator.css({"right": $tabs_width - (($index + 1) * $tab_width)});
+          $indicator.css({"left": $index * $tab_width});
+        }
+      });
+
+      // Hide the remaining content
+      $links.not($active).each(function () {
+        $(this.hash).hide();
+      });
+
+
+      // Bind the click event handler
+      $this.on('click', 'a', function(e){
+        $tabs_width = $this.width();
+        $tab_width = $this.find('li').first().outerWidth();
+
+        // Make the old tab inactive.
+        $active.removeClass('active');
+        $content.hide();
+
+        // Update the variables with the new link and content
+        $active = $(this);
+        $content = $(this.hash);
+        $links = $this.find('li.tab a');
+
+        // Make the tab active.
+        $active.addClass('active');
+        var $prev_index = $index;
+        $index = $links.index($(this));
+        if ($index < 0) {
+          $index = 0;
+        }
+        // Change url to current tab
+  //      window.location.hash = $active.attr('href');
+
+        $content.show();
+
+        // Update indicator
+        if (($index - $prev_index) >= 0) {
+          $indicator.velocity({"right": $tabs_width - (($index + 1) * $tab_width)}, { duration: 300, queue: false, easing: 'easeOutQuad'});
+          $indicator.velocity({"left": $index * $tab_width}, {duration: 300, queue: false, easing: 'easeOutQuad', delay: 90});
+
+        }
+        else {
+          $indicator.velocity({"left": $index * $tab_width}, { duration: 300, queue: false, easing: 'easeOutQuad'});
+          $indicator.velocity({"right": $tabs_width - (($index + 1) * $tab_width)}, {duration: 300, queue: false, easing: 'easeOutQuad', delay: 90});
+        }
+
+        // Prevent the anchor's default click action
+        e.preventDefault();
+      });
     });
 
-    // Hide the remaining content
-    $links.not($active).each(function () {
-      $(this.hash).hide();
-    });
-
-
-    // Bind the click event handler
-    $this.on('click', 'a', function(e){
-      $tabs_width = $this.width();
-      $tab_width = $this.find('li').first().outerWidth();
-
-      // Make the old tab inactive.
-      $active.removeClass('active');
-      $content.hide();
-
-      // Update the variables with the new link and content
-      $active = $(this);
-      $content = $(this.hash);
-      $links = $this.find('li.tab a');
-
-      // Make the tab active.
-      $active.addClass('active');
-      var $prev_index = $index;
-      $index = $links.index($(this));
-      if ($index < 0) {
-        $index = 0;
-      }
-      // Change url to current tab
-//      window.location.hash = $active.attr('href');
-
-      $content.show();
-
-      // Update indicator
-      if (($index - $prev_index) >= 0) {
-        $indicator.velocity({"right": $tabs_width - (($index + 1) * $tab_width)}, { duration: 300, queue: false, easing: 'easeOutQuad'});
-        $indicator.velocity({"left": $index * $tab_width}, {duration: 300, queue: false, easing: 'easeOutQuad', delay: 80});
-
-      }
-      else {
-        $indicator.velocity({"left": $index * $tab_width}, { duration: 300, queue: false, easing: 'easeOutQuad'});
-        $indicator.velocity({"right": $tabs_width - (($index + 1) * $tab_width)}, {duration: 300, queue: false, easing: 'easeOutQuad', delay: 80});
-      }
-
-      // Prevent the anchor's default click action
-      e.preventDefault();
-    });
-  });
-
+    },
+    select_tab : function( id ) {
+      this.find('a[href="#' + id + '"]').trigger('click');
+    }
   };
+
+  $.fn.tabs = function(methodOrOptions) {
+    if ( methods[methodOrOptions] ) {
+      return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
+      // Default to "init"
+      return methods.init.apply( this, arguments );
+    } else {
+      $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.tooltip' );
+    }
+  };
+
+  $(document).ready(function(){
+    $('ul.tabs').tabs();
+  });
 }( jQuery ));
 ;(function ($) {
-    var timeout;
-    var counter;
-    var started;
-    var counterInterval;
     $.fn.tooltip = function (options) {
-      var margin = 5;
-
-      started = false;
+        var timeout = null,
+    		counter = null,
+    		started = false,
+    		counterInterval = null,
+    		margin = 5;
 
       // Defaults
       var defaults = {
@@ -941,12 +988,18 @@ jQuery.extend( jQuery.easing,
       };
       options = $.extend(defaults, options);
 
+      //Remove previously created html
+      $('.material-tooltip').remove();
+
       return this.each(function(){
         var origin = $(this);
 
+      // Create Text span
+      var tooltip_text = $('<span></span>').text(origin.attr('data-tooltip'));
+
       // Create tooltip
       var newTooltip = $('<div></div>');
-      newTooltip.addClass('material-tooltip').text(origin.attr('data-tooltip'));
+      newTooltip.addClass('material-tooltip').append(tooltip_text);
       newTooltip.appendTo($('body'));
 
       var backdrop = $('<div></div>').addClass('backdrop');
@@ -954,15 +1007,23 @@ jQuery.extend( jQuery.easing,
       backdrop.css({ top: 0, left:0 });
 
 
+     //Destroy previously binded events
+    $(this).off('mouseenter mouseleave');
       // Mouse In
-      $(this).hover(function(e) {
+    $(this).on({
+      mouseenter: function(e) {
         e.stopPropagation();
+        var tooltip_delay = origin.data("delay");
+        tooltip_delay = (tooltip_delay == undefined || tooltip_delay == "") ? options.delay : tooltip_delay;
         counter = 0;
         counterInterval = setInterval(function(){
-          counter += 50;
-          if (counter >= defaults.delay && started == false) {
-            started = true;
+          counter += 10;
+          if (counter >= tooltip_delay && started == false) {
+            started = true
             newTooltip.css({ display: 'block', left: '0px', top: '0px' });
+
+            // Set Tooltip text
+            newTooltip.children('span').text(origin.attr('data-tooltip'));
 
             // Tooltip positioning
             var originWidth = origin.outerWidth();
@@ -973,8 +1034,6 @@ jQuery.extend( jQuery.easing,
             var tooltipVerticalMovement = '0px';
             var tooltipHorizontalMovement = '0px';
             var scale_factor = 8;
-
-            // console.log(origin.offset().left);
 
             if (tooltipPosition === "top") {
             // Top Position
@@ -1029,9 +1088,6 @@ jQuery.extend( jQuery.easing,
                 top: origin.offset().top + origin.outerHeight() + margin,
                 left: origin.offset().left + originWidth/2 - tooltipWidth/2
               });
-              //console.log(origin.offset().left)
-              //console.log(originWidth/2)
-              //console.log(tooltipWidth/2)
               tooltipVerticalMovement = '+10px';
               backdrop.css({
                 marginLeft: (tooltipWidth/2) - (backdrop.width()/2)
@@ -1055,10 +1111,11 @@ jQuery.extend( jQuery.easing,
             .velocity({scale: scale_factor}, {duration: 300, delay: 0, queue: false, easing: 'easeInOutQuad'});
 
           }
-        }, 50); // End Interval
+        }, 10); // End Interval
 
       // Mouse Out
-      }, function(){
+      },
+      mouseleave: function(){
         // Reset State
         clearInterval(counterInterval);
         counter = 0;
@@ -1075,10 +1132,16 @@ jQuery.extend( jQuery.easing,
             newTooltip.css('display', 'none');
             started = false;}
         });
+      }
       });
     });
-  }
-}( jQuery ));;/*!
+  };
+
+  $(document).ready(function(){
+     $('.tooltipped').tooltip();
+   });
+}( jQuery ));
+;/*!
  * Waves v0.6.0
  * http://fian.my.id/Waves
  *
@@ -1191,10 +1254,10 @@ jQuery.extend( jQuery.easing,
             rippleStyle['-o-transition-duration']      = Effect.duration + 'ms';
             rippleStyle['transition-duration']         = Effect.duration + 'ms';
 
-            rippleStyle['-webkit-transition-timing-function'] = 'cubic-bezier(0.215, 0.610, 0.355, 1.000)';
-            rippleStyle['-moz-transition-timing-function']    = 'cubic-bezier(0.215, 0.610, 0.355, 1.000)';
-            rippleStyle['-o-transition-timing-function']      = 'cubic-bezier(0.215, 0.610, 0.355, 1.000)';
-            rippleStyle['transition-timing-function']         = 'cubic-bezier(0.215, 0.610, 0.355, 1.000)';
+            rippleStyle['-webkit-transition-timing-function'] = 'cubic-bezier(0.250, 0.460, 0.450, 0.940)';
+            rippleStyle['-moz-transition-timing-function']    = 'cubic-bezier(0.250, 0.460, 0.450, 0.940)';
+            rippleStyle['-o-transition-timing-function']      = 'cubic-bezier(0.250, 0.460, 0.450, 0.940)';
+            rippleStyle['transition-timing-function']         = 'cubic-bezier(0.250, 0.460, 0.450, 0.940)';
 
             ripple.setAttribute('style', convertStyle(rippleStyle));
         },
@@ -1407,10 +1470,11 @@ jQuery.extend( jQuery.easing,
     };
 
     window.Waves = Waves;
-    $(document).ready(function(){
-        Waves.displayEffect();
 
-    })
+    document.addEventListener('DOMContentLoaded', function() {
+        Waves.displayEffect();
+    }, false);
+
 })(window);;function toast(message, displayLength, className, completeCallback) {
     className = className || "";
     if ($('#toast-container').length == 0) {
@@ -1449,9 +1513,9 @@ jQuery.extend( jQuery.easing,
                           easing: 'easeOutExpo',
                           queue: false,
                           complete: function(){
-                            $(this).remove();
                             if(typeof(completeCallback) === "function")
                               completeCallback();
+                            $(this).remove();
                           }
                         }
                        );
@@ -1492,7 +1556,11 @@ jQuery.extend( jQuery.easing,
                                   { duration: 375,
                         easing: 'easeOutExpo',
                         queue: false,
-                        complete: function(){toast.remove()}
+                        complete: function(){
+                          if(typeof(completeCallback) === "function")
+                            completeCallback();
+                          toast.remove()
+                        }
                       })
                   } else {
                     toast.removeClass("panning");
@@ -1549,7 +1617,8 @@ jQuery.extend( jQuery.easing,
 
     // }
 
-    $.fn.sideNav = function (options) {
+  var methods = {
+    init : function(options) {
       var defaults = {
         activationWidth: 70,
         edge: 'left'
@@ -1589,7 +1658,7 @@ jQuery.extend( jQuery.easing,
         function removeMenu() {
           panning = false;
           menuOut = false;
-          $('#sidenav-overlay').animate({opacity: 0}, {duration: 200, queue: false, easing: 'easeOutQuad',
+          $('#sidenav-overlay').velocity({opacity: 0}, {duration: 200, queue: false, easing: 'easeOutQuad',
             complete: function() {
               $(this).remove();
             } });
@@ -1754,9 +1823,29 @@ jQuery.extend( jQuery.easing,
 
             return false;
           });
-});
+      });
 
-};
+
+    },
+    show : function() {
+      this.trigger('click');
+    },
+    hide : function() {
+      $('#sidenav-overlay').trigger('click');
+    }
+  };
+
+
+    $.fn.sideNav = function(methodOrOptions) {
+      if ( methods[methodOrOptions] ) {
+        return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
+      } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
+        // Default to "init"
+        return methods.init.apply( this, arguments );
+      } else {
+        $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.tooltip' );
+      }
+    }; // PLugin end
 }( jQuery ));;/**
  * Extend jquery with a scrollspy plugin.
  * This watches the window scroll and fires events when elements are scrolled into viewport.
@@ -2047,7 +2136,7 @@ jQuery.extend( jQuery.easing,
   $(document).ready(function() {
 
     // Text based inputs
-    var input_selector = 'input[type=text], input[type=password], input[type=email], input[type=tel], input[type=number], textarea';
+    var input_selector = 'input[type=text], input[type=password], input[type=email], input[type=url], input[type=tel], input[type=number], input[type=search], textarea';
 
     // Add active if form auto complete
     $(document).on('change', input_selector, function () {
@@ -2113,8 +2202,17 @@ jQuery.extend( jQuery.easing,
         content = null;
         $('body').append(hiddenDiv);
     }
-    var hiddendiv = $('.hiddendiv');
     var text_area_selector = '.materialize-textarea';
+    $('.hiddendiv').css('width', $(text_area_selector).width());
+
+    $(text_area_selector).each(function () {
+      if ($(this).val().length) {
+        content = $(this).val();
+        content = content.replace(/\n/g, '<br>');
+        hiddenDiv.html(content + '<br>');
+        $(this).css('height', hiddenDiv.height());
+      }
+    });
       $('body').on('keyup keydown',text_area_selector , function () {
         // console.log($(this).val());
         content = $(this).val();
@@ -2364,10 +2462,12 @@ jQuery.extend( jQuery.easing,
 
       // Set initial dimensions of images
       $slides.find('img').each(function () {
-        $(this).load(function () {
+        $(this).on("load",function () {
           if ($(this).width() < $(this).parent().width()) {
             $(this).css({width: '100%', height: 'auto'});
           }
+        }).each(function() {
+          if(this.complete) $(this).load();
         });
       });
 
